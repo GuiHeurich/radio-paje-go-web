@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>oñiñã me'e - Radio</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    Oxygen, Ubuntu, Cantarell, sans-serif;
+                background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+                min-height: 100vh;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                padding: 20px;
+            }
+
+            .container {
+                background: white;
+                border-radius: 20px;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+                padding: 40px;
+                max-width: 600px;
+                width: 100%;
+            }
+
+            h1 {
+                color: #1a1a1a;
+                font-size: 2.5em;
+                margin-bottom: 30px;
+                text-align: center;
+                font-weight: 700;
+            }
+
+            .player-wrapper {
+                background: #f8f9fa;
+                border-radius: 15px;
+                padding: 30px;
+                text-align: center;
+            }
+
+            audio {
+                width: 100%;
+                outline: none;
+                border-radius: 10px;
+            }
+
+            audio::-webkit-media-controls-panel {
+                background: white;
+            }
+
+            .status {
+                margin-top: 20px;
+                color: #666;
+                font-size: 0.9em;
+            }
+
+            .live-indicator {
+                display: inline-block;
+                width: 10px;
+                height: 10px;
+                background: #ff3333;
+                border-radius: 50%;
+                margin-right: 8px;
+                animation: pulse 2s infinite;
+            }
+
+            @keyframes pulse {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.5;
+                }
+            }
+
+            @media (max-width: 600px) {
+                .container {
+                    padding: 25px;
+                }
+
+                h1 {
+                    font-size: 2em;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>oñiñã me'e</h1>
+            <div class="player-wrapper">
+                <audio id="audioPlayer" controls autoplay></audio>
+                <div class="status">
+                    <span class="live-indicator"></span>
+                    <span>Live Radio</span>
+                </div>
+                <div id="status" class="status">
+                    <p id="currentTrack">Ready to play</p>
+                </div>
+            </div>
+        </div>
+    </body>
+
+    <script>
+        const audio = document.getElementById("audioPlayer");
+        const statusDiv = document.getElementById("status");
+        const trackInfo = document.getElementById("status");
+
+        function updateStatus(message, isLoading = false) {
+            statusDiv.textContent = message;
+            statusDiv.className = "status" + (isLoading ? " loading" : "");
+        }
+
+        function extractFilename(url) {
+            const match = url.match(/file=([^&]+)/);
+            if (match) {
+                return decodeURIComponent(match[1]);
+            }
+            return "Unknown";
+        }
+
+        function loadNextTrack() {
+            updateStatus("Loading next track...", true);
+
+            // Add timestamp to prevent caching
+            const timestamp = Date.now();
+            const streamUrl = `/stream?t=${timestamp}`;
+
+            // Update audio source
+            audio.src = streamUrl;
+            audio.load();
+
+            // Try to play (might fail due to autoplay policies)
+            audio.play().catch((err) => {
+                console.error("Autoplay failed:", err);
+                updateStatus("Click play to continue");
+            });
+        }
+
+        // When track metadata is loaded
+        audio.addEventListener("loadedmetadata", () => {
+            const filename = extractFilename(audio.src);
+            trackInfo.textContent = `Now playing: ${filename}`;
+            updateStatus(`Now playing: ${filename}`);
+        });
+
+        // When track ends, load the next one
+        audio.addEventListener("ended", () => {
+            updateStatus("Track ended, loading next...", true);
+            loadNextTrack();
+        });
+
+        // Error handling
+        audio.addEventListener("error", (e) => {
+            console.error("Audio error:", e);
+            updateStatus("Error loading track. Retrying in 3s...");
+            setTimeout(loadNextTrack, 3000);
+        });
+
+        // When track starts playing
+        audio.addEventListener("playing", () => {
+            const filename = extractFilename(audio.src);
+            trackInfo.textContent = `Now playing: ${filename}`;
+            updateStatus(`Now playing: ${filename}`);
+        });
+
+        // Initial load
+        loadNextTrack();
+    </script>
+</html>
